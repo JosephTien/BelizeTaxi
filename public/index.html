@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1, shrink-to-fit=no">
+    <meta name="description" content="">
+    <meta name="author" content="jtien">
+    <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.3.1/css/bootstrap.min.css" integrity="sha384-ggOyR0iXCbMQv3Xipma34MD+dH/1fQ784/j6cY/iJTQUOhcWr7x9JvoRxT2MZw1T" crossorigin="anonymous">
+    <link rel="stylesheet" href="css/index.css">
+    <title>Belize Taxi</title>
+</head>
+<body>
+    <div class="container-fluid">
+        <div class="row align-items-center" style="padding: 10px;">
+            <form class="col-8">
+                <select id="filter" class="form-control custom-select" name="area" onchange="onFilterChange()">
+                    <option value="" selected>All Area</option>
+                    <option value="Belize City">Belize City</option>
+                    <option value="Belmopan">Belmopan</option>
+                    <option value="Benque Viejo">Benque Viejo</option>
+                    <option value="Corozal">Corozal</option>
+                    <option value="Dangriga">Dangriga</option>
+                    <option value="Orange Walk">Orange Walk</option>
+                    <option value="Punta Gorda">Punta Gorda</option>
+                    <option value="San Ignacio">San Ignacio</option>
+                </select>
+            </form>
+            <div class="col-1" style="text-align: left; padding: 0;">
+                <button onclick="toggleAllDisplay()" class="btn btn-default" style="padding: 0;width: 100%;text-align: left;">ⓘ</button>
+            </div>
+            <div class="col-3" style="text-align: right;">
+                <button onclick="openForm()" class="btn btn-primary" id="register-btn">Driver?</button>
+            </div>
+        </div>
+        <div class="table-responsiv" style="padding: 0 10px;">
+            <table class="table table-striped table-sm table-bordered table-fixed" style="margin: 0;">
+                <thead>
+                    <tr>
+                        <th>Licence</th>
+                        <th>Name</th>
+                        <th>Phone</th>
+                    </tr>
+                </thead>
+            </table>
+        </div>
+        <div class="table-responsive" style="padding: 0 10px; height: calc(100vh - 25vmin);">
+            <table class="table table-striped table-sm table-bordered table-fixed table-scroll">
+                <tbody id="list">
+<%=content%>
+                    <tr>
+                        <td colspan="3" style="text-align: center;" id="taxi-noava">No Taxi Avaliable</td>
+                    </tr>
+                </tbody>
+            </table>
+            </div>
+        </div>
+    </div>
+    <div class="overlay" id="form-screen" >
+        <a href="javascript:void(0)" class="closebtn" onclick="closeForm()">&times;</a>
+        <button class="overlay-shadowbtn" onclick="closeForm()"></button>
+        <div class="row justify-content-center align-items-center" style="height: 100%">
+            <div class="col-8">
+                <form method="post" id="form">
+                    <input name="licence" placeholder="Licence" class="form-control" required>
+                    <input name="name" placeholder="Name" class="form-control" required>
+                    <input name="phone" placeholder="Phone" class="form-control" required>
+                    <select name="area" class="form-control custom-select" placeholder="Area" required>
+                        <option disabled selected value>Select Area</option>
+                        <option value="Belize City">Belize City</option>
+                        <option value="Belmopan">Belmopan</option>
+                        <option value="Benque Viejo">Benque Viejo</option>
+                        <option value="Corozal">Corozal</option>
+                        <option value="Dangriga">Dangriga</option>
+                        <option value="Orange Walk">Orange Walk</option>
+                        <option value="Punta Gorda">Punta Gorda</option>
+                        <option value="San Ignacio">San Ignacio</option>
+                    </select>
+                </form>
+                <div>
+                    <textarea name="note" placeholder="Detail" class="form-control" form="form" rows="3"></textarea>
+                    <button class="btn btn-lg btn-primary btn-block" type="submit" form="form" >Submit</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+<script src="js/index.js"></script>
+</html>
+<!--Congratulations-->
