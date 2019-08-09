@@ -179,7 +179,7 @@ function generatePage_handler(err, data){
     <div class='row'>
       <div class='col' style='text-align: right;'>
         ＠: ${strs[3]}<br>
-        <div class='timestamp' value='${strs[5]}'>↻: </div>
+        <div class='timestamp' value='${strs[5]}'></div>
       </div>
     </div>
   </td>\n`
@@ -311,7 +311,9 @@ var app = http.createServer(function (req, res) {
       } 
       res.end() 
     }) 
-  } else {
+  } else if(req.url.indexOf('/bus') != -1) { 
+    respondBusTable(req, res)
+  } else{ 
     mainRespond(req, res)////////////////
     /*
     fs.readFile(__dirname + '/public/index.html', function (err, data) { 
@@ -326,7 +328,174 @@ var app = http.createServer(function (req, res) {
       res.end() 
     })
     */
-  } 
+  }
 }).listen(port, '0.0.0.0') 
 
 module.exports = app
+
+/*******************************************************/
+/*******************************************************/
+//const fs = require('fs');
+const readline = require('readline');
+const {google} = require('googleapis');
+// If modifying these scopes, delete token.json.
+const SCOPES = ['https://www.googleapis.com/auth/spreadsheets.readonly'];
+// The file token.json stores the user's access and refresh tokens, and is
+// created automatically when the authorization flow completes for the first
+// time.
+const TOKEN_PATH = 'key/token.json';
+const CREDENTIALS_PATH = 'key/credentials.json';
+// Load client secrets from a laocal file.
+fs.readFile(CREDENTIALS_PATH, (err, content) => {
+  if (err) return console.log('Error loading client secret file:', err);
+  // Authorize a client with credentials, then call the Google Sheets API.
+  authorize(JSON.parse(content),mainFetchProcess);
+});
+/**
+ * Create an OAuth2 client with the given credentials, and then execute the
+ * given callback function.
+ * @param {Object} credentials The authorization client credentials.
+ * @param {function} callback The callback to call with the authorized client.
+ */
+function authorize(credentials, callback) {
+  const {client_secret, client_id, redirect_uris} = credentials.installed;
+  const oAuth2Client = new google.auth.OAuth2(
+      client_id, client_secret, redirect_uris[0]);
+
+  // Check if we have previously stored a token.
+  fs.readFile(TOKEN_PATH, (err, token) => {
+    if (err) return getNewToken(oAuth2Client, callback);
+    oAuth2Client.setCredentials(JSON.parse(token));
+    callback(oAuth2Client);
+  });
+}
+
+/**
+ * Get and store new token after prompting for user authorization, and then
+ * execute the given callback with the authorized OAuth2 client.
+ * @param {google.auth.OAuth2} oAuth2Client The OAuth2 client to get token for.
+ * @param {getEventsCallback} callback The callback for the authorized client.
+ */
+function getNewToken(oAuth2Client, callback) {
+  const authUrl = oAuth2Client.generateAuthUrl({
+    access_type: 'offline',
+    scope: SCOPES,
+  });
+  console.log('Authorize this app by visiting this url:', authUrl);
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+  rl.question('Enter the code from that page here: ', (code) => {
+    rl.close();
+    oAuth2Client.getToken(code, (err, token) => {
+      if (err) return console.error('Error while trying to retrieve access token', err);
+      oAuth2Client.setCredentials(token);
+      // Store the token to disk for later program executions
+      fs.writeFile(TOKEN_PATH, JSON.stringify(token), (err) => {
+        if (err) return console.error(err);
+        console.log('Token stored to', TOKEN_PATH);
+      });
+      callback(oAuth2Client);
+    });
+  });
+}
+//-----------------------------------------------------------------------
+var busSheetId = '18ZWZgy-PeEetBdmz9aXqLwO6nyB0yXdegqsmKa0zsIk'
+var guidline = {
+    'parameters':['line={tag of line}'],
+    'lines': [
+        {'tag': 'BVO_BZE','description': 'Western, from Benque Viejo to Belize City.'},
+        {'tag': 'BZE_BVO','description': 'Western, from Belize City to Benque Viejo.'},
+        {'tag': 'SE_BZE','description': 'Northern, from Santa Elena Border to Belize City.'},
+        {'tag': 'BZE_SE','description': 'Northern, from Belize City to Santa Elena Border.'},
+        {'tag': 'PG_BZE','description': 'Southern, from Punta Gorda to Belize City.'},
+        {'tag': 'BZE_PG','description': 'Southern, from Belize City to Punta Gorda.'}
+    ]
+}
+var guidlineJSON = JSON.stringify(guidline, undefined, 2)
+var busTable = {}
+var busTableJSON = {}
+//-----------------------------------------------------------------------
+var auth
+var cnt;
+function mainFetchProcess(_auth){
+    auth = _auth
+    cnt=0;
+    for(var i=0;i<6;i++){
+        fetchSheetData(guidline['lines'][i]['tag'])
+    }
+}
+function finishFetchHandler(){
+    cnt++
+    if(cnt==guidline['lines'].length){}
+}
+function setLineData(linetag, rows) {
+    var pack = {}
+    var buses = []
+    var terminals = []
+    rows.map((row, idx) => { 
+        if(idx==0){
+            for(var i=4;i<row.length;i+=2){
+                terminals.push(rows[0][i])
+            }
+        }else{
+            var bus = {}
+            bus['id']=row[0]
+            bus['company']=row[1]
+            bus['rsp']=row[2]
+            bus['days']=row[3]
+            bus['arrive']=[]
+            bus['depart']=[]
+            function st(str){ return str==undefined?'':str;}
+            for(var j=0;j<terminals.length;j++){
+                bus['arrive'].push(st(row[4+j*2]))
+                bus['depart'].push(st(row[4+j*2+1]))
+            }
+            buses.push(bus)
+        }
+    })
+    pack['line'] = linetag
+    for(var i=0;i<guidline['lines'].length;i++){
+        if(guidline['lines'][i]['tag']==linetag){
+            pack['description'] = guidline['lines'][i]['description']
+            break;
+        }
+    }
+    pack['terminals'] = terminals
+    pack['buses'] = buses
+    busTable[linetag]=pack
+    busTableJSON[linetag]=JSON.stringify(pack, undefined, 2)
+    finishFetchHandler()
+}
+function fetchSheetData(linetag){
+    const sheets = google.sheets({version: 'v4', auth});
+    sheets.spreadsheets.values.get({
+      spreadsheetId: busSheetId,
+      range: linetag+'!A1:Z',
+    }, (err, res) => {
+      if (err) return console.log('The API returned an error: ' + err);
+      const rows = res.data.values;
+      if (rows.length) {
+        //rows.map((row) => { console.log(row); });
+        setLineData(linetag, rows)
+      } else {
+        console.log('No data found.');
+      }
+    });
+}
+//-----------------------------------------------------------------------
+function respondBusTable(req, res){
+  var params = url.parse(req.url, true).query
+    if(params.line == undefined){
+      res.write(guidlineJSON)
+      res.end()
+    }else{
+      if(params.line=='' || busTableJSON[params.line]){
+        res.write("Bad Request")
+      }else{
+        res.write(busTableJSON[params.line]) 
+      }
+      res.end()
+    }
+}
